@@ -1,4 +1,4 @@
-package com.marciorodrigues87;
+package com.marciorodrigues87.trustedadvisormonitor;
 
 public enum Config {
 	SLACK_USERNAME("trusted-advisor-monitor"), //

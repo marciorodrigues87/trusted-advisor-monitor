@@ -1,12 +1,12 @@
-package com.marciorodrigues87;
+package com.marciorodrigues87.trustedadvisormonitor;
 
-import static com.marciorodrigues87.Config.AWS_CREDENTIALS_IDS;
-import static com.marciorodrigues87.Config.AWS_CREDENTIALS_SECRETS;
-import static com.marciorodrigues87.Config.AWS_CREDENTIAL_NAMES;
-import static com.marciorodrigues87.Config.CHECK_PERIOD_MINUTES;
-import static com.marciorodrigues87.Config.SLACK_HOOK;
-import static com.marciorodrigues87.Config.SLACK_ICON;
-import static com.marciorodrigues87.Config.SLACK_USERNAME;
+import static com.marciorodrigues87.trustedadvisormonitor.Config.AWS_CREDENTIALS_IDS;
+import static com.marciorodrigues87.trustedadvisormonitor.Config.AWS_CREDENTIALS_SECRETS;
+import static com.marciorodrigues87.trustedadvisormonitor.Config.AWS_CREDENTIAL_NAMES;
+import static com.marciorodrigues87.trustedadvisormonitor.Config.CHECK_PERIOD_MINUTES;
+import static com.marciorodrigues87.trustedadvisormonitor.Config.SLACK_HOOK;
+import static com.marciorodrigues87.trustedadvisormonitor.Config.SLACK_ICON;
+import static com.marciorodrigues87.trustedadvisormonitor.Config.SLACK_USERNAME;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static software.amazon.awssdk.regions.Region.US_EAST_1;
