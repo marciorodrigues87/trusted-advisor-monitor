@@ -60,6 +60,7 @@ public class Main {
 				System.out.println("**** END ****");
 			} catch (Exception e) {
 				e.printStackTrace();
+				System.exit(-1);
 			}
 		}, 0, CHECK_PERIOD_MINUTES.asInt(), MINUTES);
 
