@@ -27,6 +27,7 @@ import software.amazon.awssdk.services.support.model.DescribeTrustedAdvisorCheck
 import software.amazon.awssdk.services.support.model.DescribeTrustedAdvisorCheckResultResponse;
 import software.amazon.awssdk.services.support.model.DescribeTrustedAdvisorChecksRequest;
 import software.amazon.awssdk.services.support.model.DescribeTrustedAdvisorChecksResponse;
+import software.amazon.awssdk.services.support.model.RefreshTrustedAdvisorCheckRequest;
 import software.amazon.awssdk.services.support.model.TrustedAdvisorCheckDescription;
 import software.amazon.awssdk.services.support.model.TrustedAdvisorResourceDetail;
 
@@ -79,6 +80,12 @@ public class Main {
 		final DescribeTrustedAdvisorChecksResponse result = client.describeTrustedAdvisorChecks(request);
 		for (TrustedAdvisorCheckDescription check : result.checks()) {
 			if (check.category().equalsIgnoreCase("cost_optimizing")) {
+				try {
+					final RefreshTrustedAdvisorCheckRequest refreshTrustedAdvisorCheckRequest = RefreshTrustedAdvisorCheckRequest.builder().checkId(check.id()).build();
+					client.refreshTrustedAdvisorCheck(refreshTrustedAdvisorCheckRequest);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 				final DescribeTrustedAdvisorCheckResultRequest checkRequest = DescribeTrustedAdvisorCheckResultRequest.builder()
 						.checkId(check.id())
 						.language("en")
