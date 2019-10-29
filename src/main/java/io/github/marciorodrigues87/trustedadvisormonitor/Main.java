@@ -3,12 +3,10 @@ package io.github.marciorodrigues87.trustedadvisormonitor;
 import static io.github.marciorodrigues87.trustedadvisormonitor.Config.AWS_CREDENTIALS_IDS;
 import static io.github.marciorodrigues87.trustedadvisormonitor.Config.AWS_CREDENTIALS_SECRETS;
 import static io.github.marciorodrigues87.trustedadvisormonitor.Config.AWS_CREDENTIAL_NAMES;
-import static io.github.marciorodrigues87.trustedadvisormonitor.Config.CHECK_PERIOD_MINUTES;
 import static io.github.marciorodrigues87.trustedadvisormonitor.Config.SLACK_HOOK;
 import static io.github.marciorodrigues87.trustedadvisormonitor.Config.SLACK_ICON;
 import static io.github.marciorodrigues87.trustedadvisormonitor.Config.SLACK_USERNAME;
 import static java.lang.String.format;
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static software.amazon.awssdk.regions.Region.US_EAST_1;
 
 import java.io.IOException;
@@ -18,11 +16,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -36,7 +32,8 @@ import software.amazon.awssdk.services.support.model.TrustedAdvisorResourceDetai
 
 public class Main {
 
-	private static final Map<String, List<String>> PREVIOUS_CHECKS = new ConcurrentHashMap<>();
+	private static final AtomicBoolean HAS_NEW_CHECKS = new AtomicBoolean(false);
+	private static final PreviousChecks PREVIOUS_CHECKS = new PreviousChecks();
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
 	public static void main(String[] args) {
@@ -48,23 +45,20 @@ public class Main {
 			final StaticCredentialsProvider provider = StaticCredentialsProvider.create(AwsBasicCredentials.create(keyIds[i], keySecrets[i]));
 			clients.put(accounts[i], SupportClient.builder().credentialsProvider(provider).region(US_EAST_1).build());
 		}
-		Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
-			try {
-				final int initialChecksSize = PREVIOUS_CHECKS.size();
-				for (Entry<String, SupportClient> client : clients.entrySet()) {
-					checkAccount(client.getValue(), client.getKey());
-				}
-				if (initialChecksSize == PREVIOUS_CHECKS.size()) {
-					sendSlackMessage("não encontrei mais nenhum recurso dessa vez");
-				}
-				System.out.println("**** END ****");
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.exit(-1);
+		try {
+			for (Entry<String, SupportClient> client : clients.entrySet()) {
+				checkAccount(client.getValue(), client.getKey());
 			}
-		}, 0, CHECK_PERIOD_MINUTES.asInt(), MINUTES);
+			if (!HAS_NEW_CHECKS.get()) {
+				sendSlackMessage("não encontrei mais nenhum recurso dessa vez :eyes:");
+			}
+			System.out.println("**** END ****");
+			HAS_NEW_CHECKS.set(false);
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(-1);
+		}
 
-		while (true);
 	}
 
 	private static void sendSlackMessage(String payload) throws IOException, InterruptedException {
@@ -92,10 +86,15 @@ public class Main {
 				final DescribeTrustedAdvisorCheckResultResponse checkResult = client.describeTrustedAdvisorCheckResult(checkRequest);
 				if (checkResult.result().status().equalsIgnoreCase("warning")) {
 					if (!checkResult.result().flaggedResources().isEmpty()) {
-						payload.append(format("*%s*\n", check.name()));
+						boolean titleAdded = false;
 						for (TrustedAdvisorResourceDetail detail : checkResult.result().flaggedResources()) {
-							if (!PREVIOUS_CHECKS.containsKey(detail.resourceId())) {
-								PREVIOUS_CHECKS.put(detail.resourceId(), detail.metadata());
+							if (!PREVIOUS_CHECKS.contains(detail.resourceId())) {
+								PREVIOUS_CHECKS.add(detail.resourceId());
+								HAS_NEW_CHECKS.set(true);
+								if (!titleAdded) {
+									payload.append(format("*%s*\n", check.name()));
+									titleAdded = true;
+								}
 								switch (check.name()) {
 								case "Low Utilization Amazon EC2 Instances": {
 									final String region = detail.metadata().get(0);
@@ -138,7 +137,9 @@ public class Main {
 				}
 			}
 		}
-		sendSlackMessage(payload.toString());
+		if (HAS_NEW_CHECKS.get()) {
+			sendSlackMessage(payload.toString());
+		}
 	}
 
 }

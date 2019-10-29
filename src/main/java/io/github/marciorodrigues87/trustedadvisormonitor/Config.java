@@ -7,7 +7,7 @@ public enum Config {
 	AWS_CREDENTIAL_NAMES("ACCOUNT_1,ACCOUNT_2"), //
 	AWS_CREDENTIALS_IDS("KEY_ID_1,KEY_ID_2"), //
 	AWS_CREDENTIALS_SECRETS("KEY_SECRET_1,KEY_SECRET_2"), //
-	CHECK_PERIOD_MINUTES("1440"); //
+	PREVIOUS_RESULTS_S3_BUCKET("trusted-advisor-monitor-bucket"); //
 
 	private final String value;
 
