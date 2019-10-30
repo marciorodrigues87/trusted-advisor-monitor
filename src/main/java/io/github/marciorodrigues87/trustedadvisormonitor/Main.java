@@ -33,7 +33,7 @@ import software.amazon.awssdk.services.support.model.TrustedAdvisorResourceDetai
 
 public class Main {
 
-	private static final AtomicBoolean HAS_NEW_CHECKS = new AtomicBoolean(false);
+	private static final AtomicBoolean HAS_NEW_CHECKS = new AtomicBoolean();
 	private static final PreviousChecks PREVIOUS_CHECKS = new PreviousChecks();
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
@@ -48,6 +48,7 @@ public class Main {
 		}
 		try {
 			for (Entry<String, SupportClient> client : clients.entrySet()) {
+				HAS_NEW_CHECKS.set(false);
 				checkAccount(client.getValue(), client.getKey());
 			}
 			if (!HAS_NEW_CHECKS.get()) {
