@@ -15,10 +15,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -33,7 +29,6 @@ import software.amazon.awssdk.services.support.model.TrustedAdvisorResourceDetai
 
 public class Main {
 
-	private static final AtomicBoolean HAS_NEW_CHECKS = new AtomicBoolean();
 	private static final PreviousChecks PREVIOUS_CHECKS = new PreviousChecks();
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
@@ -41,25 +36,16 @@ public class Main {
 		final String[] accounts = AWS_CREDENTIAL_NAMES.asStringArray();
 		final String[] keyIds = AWS_CREDENTIALS_IDS.asStringArray();
 		final String[] keySecrets = AWS_CREDENTIALS_SECRETS.asStringArray();
-		final Map<String, SupportClient> clients = new HashMap<>();
 		for (int i = 0; i < accounts.length; i++) {
-			final StaticCredentialsProvider provider = StaticCredentialsProvider.create(AwsBasicCredentials.create(keyIds[i], keySecrets[i]));
-			clients.put(accounts[i], SupportClient.builder().credentialsProvider(provider).region(US_EAST_1).build());
-		}
-		try {
-			for (Entry<String, SupportClient> client : clients.entrySet()) {
-				HAS_NEW_CHECKS.set(false);
-				checkAccount(client.getValue(), client.getKey());
+			try {
+				final StaticCredentialsProvider provider = StaticCredentialsProvider.create(AwsBasicCredentials.create(keyIds[i], keySecrets[i]));
+				checkAccount(SupportClient.builder().credentialsProvider(provider).region(US_EAST_1).build(), accounts[i]);
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.exit(-1);
 			}
-			if (!HAS_NEW_CHECKS.get()) {
-				sendSlackMessage("não encontrei mais nenhum recurso dessa vez :eyes:");
-			}
-			System.out.println("**** END ****");
-			HAS_NEW_CHECKS.set(false);
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.exit(-1);
 		}
+		System.out.println("**** END ****");
 
 	}
 
@@ -74,6 +60,7 @@ public class Main {
 	}
 
 	private static void checkAccount(SupportClient client, String account) throws IOException, InterruptedException {
+		boolean hasNewChecks = false;
 		final StringBuilder payload = new StringBuilder(format("achei esses recursos gastando dinheiro na conta da AWS do %s\n", account));
 		final DescribeTrustedAdvisorChecksRequest request = DescribeTrustedAdvisorChecksRequest.builder()
 				.language("en")
@@ -98,7 +85,7 @@ public class Main {
 						for (TrustedAdvisorResourceDetail detail : checkResult.result().flaggedResources()) {
 							if (!PREVIOUS_CHECKS.contains(detail.resourceId())) {
 								PREVIOUS_CHECKS.add(detail.resourceId());
-								HAS_NEW_CHECKS.set(true);
+								hasNewChecks = true;
 								if (!titleAdded) {
 									payload.append(format("*%s*\n", check.name()));
 									titleAdded = true;
@@ -145,8 +132,10 @@ public class Main {
 				}
 			}
 		}
-		if (HAS_NEW_CHECKS.get()) {
+		if (hasNewChecks) {
 			sendSlackMessage(payload.toString());
+		} else {
+			sendSlackMessage(format("não encontrei nenhum recurso no conta da AWS do %s dessa vez :eyes:", account));
 		}
 	}
 
