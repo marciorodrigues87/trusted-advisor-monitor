@@ -1,0 +1,67 @@
+# CronJob
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: trusted-advisor-monitor
+  labels:
+    app: trusted-advisor-monitor
+spec:
+  schedule: "0 14 * * 1-5"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: trusted-advisor-monitor
+        spec:
+          containers:
+          - name: trusted-advisor-monitor
+            imagePullPolicy: Always
+            image: marciorodrigues87/trusted-advisor-monitor:latest
+            resources:
+              requests:
+                memory: 128Mi
+                cpu: 100m
+              limits:
+                memory: 128Mi
+                cpu: 100m
+            env:
+              - name: SLACK_USERNAME
+                valueFrom:
+                  configMapKeyRef:
+                    name: trusted-advisor-monitor
+                    key: SLACK_USERNAME
+              - name: SLACK_ICON
+                valueFrom:
+                  configMapKeyRef:
+                    name: trusted-advisor-monitor
+                    key: SLACK_ICON
+              - name: SLACK_HOOK
+                valueFrom:
+                  secretKeyRef:
+                    name: trusted-advisor-monitor
+                    key: SLACK_HOOK
+              - name: PREVIOUS_RESULTS_S3_BUCKET
+                valueFrom:
+                  configMapKeyRef:
+                    name: trusted-advisor-monitor
+                    key: PREVIOUS_RESULTS_S3_BUCKET
+              - name: AWS_CREDENTIAL_NAMES
+                valueFrom:
+                  configMapKeyRef:
+                    name: trusted-advisor-monitor
+                    key: AWS_CREDENTIAL_NAMES
+              - name: AWS_CREDENTIALS_IDS
+                valueFrom:
+                  secretKeyRef:
+                    name: trusted-advisor-monitor
+                    key: AWS_CREDENTIALS_IDS
+              - name: AWS_CREDENTIALS_SECRETS
+                valueFrom:
+                  secretKeyRef:
+                    name: trusted-advisor-monitor
+                    key: AWS_CREDENTIALS_SECRETS
+              - name: EXTRA_JAVA_OPTS
+                value: "-XX:CICompilerCount=1 -XX:-TieredCompilation -Xss256k -XX:MaxMetaspaceSize=50m -Xms50m -Xmx50m -server"
+          restartPolicy: OnFailure
